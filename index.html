@@ -378,46 +378,86 @@
     </audio>
     
     <script>
-        const API_URL = "https://serveur-fadiga.onrender.com"
-        let detections = [];
-        let activeAlerts = [];
-        let soundEnabled = true;
-        
-      const socket = io(API_URL);
+const API_URL = "https://serveur-fadiga.onrender.com"
+let detections = [];
+let activeAlerts = [];
+let soundEnabled = true;
 
-// Debug de la connexion
+const socket = io(API_URL);
+
+// ==================== DEBUG CONNEXION SOCKET ====================
+console.log('🔌 Tentative de connexion Socket.io à:', API_URL);
+
 socket.on('connect', () => {
-    console.log('✅ Connecté au serveur avec ID:', socket.id);
+    console.log('✅ CONNECTÉ au serveur avec ID:', socket.id);
+    console.log('📡 URL du serveur:', API_URL);
     document.getElementById('connection-status').textContent = 'En ligne';
     document.getElementById('status-indicator').style.background = 'white';
 });
 
 socket.on('connect_error', (error) => {
-    console.error('❌ Erreur connexion:', error);
+    console.error('❌ ERREUR DE CONNEXION:', error);
+    console.log('🔧 Détails de l\'erreur:', {
+        message: error.message,
+        type: error.type,
+        description: error.description
+    });
 });
 
 socket.on('disconnect', (reason) => {
-    console.log('🔌 Déconnecté:', reason);
+    console.log('🔌 DÉCONNECTÉ - Raison:', reason);
     document.getElementById('connection-status').textContent = 'Hors ligne';
     document.getElementById('status-indicator').style.background = '#ef4444';
 });
 
-        
-        socket.on('new_detection', (detection) => {
-            detections.unshift(detection);
-            addDetectionCard(detection);
-            updateStats();
+socket.on('reconnect', (attemptNumber) => {
+    console.log('🔄 RECONNECTÉ - Tentative:', attemptNumber);
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+    console.log('🔄 Tentative de reconnexion:', attemptNumber);
+});
+
+socket.on('reconnect_error', (error) => {
+    console.error('❌ Erreur lors de la reconnexion:', error);
+});
+
+socket.on('reconnect_failed', () => {
+    console.error('💥 ÉCHEC de la reconnexion après plusieurs tentatives');
+});
+
+// Événements métier
+socket.on('new_detection', (detection) => {
+    console.log('📸 NOUVELLE DÉTECTION:', detection);
+    detections.unshift(detection);
+    addDetectionCard(detection);
+    updateStats();
+});
+
+socket.on('new_alert', (alert) => {
+    console.log('🚨 NOUVELLE ALERTE:', alert);
+    activeAlerts.unshift(alert);
+    showAlarm(alert);
+    if (soundEnabled) {
+        document.getElementById('alarm-sound').play().catch(e => {
+            console.log('🔇 Son d\'alerte non joué:', e);
         });
-        
-        socket.on('new_alert', (alert) => {
-            activeAlerts.unshift(alert);
-            showAlarm(alert);
-            if (soundEnabled) document.getElementById('alarm-sound').play().catch(() => {});
-        });
-        
-        socket.on('stream_url_updated', (data) => {
-            document.getElementById('live-stream').src = data.url;
-        });
+    }
+});
+
+socket.on('stream_url_updated', (data) => {
+    console.log('📹 URL stream mise à jour:', data.url);
+    document.getElementById('live-stream').src = data.url;
+});
+
+socket.on('initial_stats', (stats) => {
+    console.log('📊 Stats initiales reçues:', stats);
+});
+
+socket.on('alert_acknowledged', (alert) => {
+    console.log('✅ Alerte acquittée:', alert.id);
+});
+
         
         async function initStream() {
             try {
